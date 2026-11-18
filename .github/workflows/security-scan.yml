@@ -1,0 +1,57 @@
+# .github/workflows/snyk-scan.yml   SKELETON - complete every TODO
+name: snyk-security-scan
+
+# 1) SCM trigger
+# TODO: add only what you need
+on:
+  push:
+    branches:
+      - master
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master
+      - 'feature/**'
+
+permissions:
+  contents: read
+
+env:
+  SNYK_VERSION: "1.1308.4"                 # pin an exact CLI version (no latest)
+
+jobs:
+  snyk-scan:                           # 2) Trigger Scan -> 3) Runner
+    runs-on: ubuntu-24.04
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}   # CI secret - never commit
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # version 4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # version 4.4.0
+        with:
+          node-version: "22" 
+
+
+      - name: Install Snyk CLI (pinned)
+        run: npm install -g "snyk@${SNYK_VERSION}"
+
+      - name: Authenticate
+        run: snyk auth "$SNYK_TOKEN"   # or rely on SNYK_TOKEN env only
+
+      - name: Snyk Code (SAST)
+        run: snyk code test --sarif-file-output=TODO.sarif
+        # TODO: what happens to the next steps when this exits 1?
+
+      - name: Snyk Open Source (SCA)
+        run: snyk test --severity-threshold=high --json-file-output=TODO.json
+
+      # - name: Snyk Container (optional)
+      #   run: snyk container test TODO-image --file=Dockerfile
+
+      - name: Upload results            # 4) Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-results
+          path: TODO                   # TODO: keep results even on failure
+
+      # TODO: quality gate - fail the pipeline on High/Critical
