@@ -1,246 +1,201 @@
-# ![Juice Shop Logo](https://raw.githubusercontent.com/juice-shop/juice-shop/master/frontend/src/assets/public/images/JuiceShop_Logo_100px.png) OWASP Juice Shop
+## 1. Overview
 
-[![OWASP Flagship](https://img.shields.io/badge/owasp-flagship%20project-48A646.svg)](https://owasp.org/projects/#sec-flagships)
-[![GitHub release](https://img.shields.io/github/release/juice-shop/juice-shop.svg)](https://github.com/juice-shop/juice-shop/releases/latest)
-[![Twitter Follow](https://img.shields.io/twitter/follow/owasp_juiceshop.svg?style=social&label=Follow)](https://twitter.com/owasp_juiceshop)
-[![Subreddit subscribers](https://img.shields.io/reddit/subreddit-subscribers/owasp_juiceshop?style=social)](https://reddit.com/r/owasp_juiceshop)
+โปรเจกต์นี้เป็นการพัฒนา Automated Security Scanning Pipeline โดยใช้ **GitHub Actions** ร่วมกับ **Snyk CLI** เพื่อใช้ตรวจสอบช่องโหว่ด้านความปลอดภัยของ Source Code และ Third-party Dependencies ภายในโปรเจกต์
 
-[![CI/CD Pipeline](https://github.com/juice-shop/juice-shop/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/juice-shop/juice-shop/actions/workflows/ci.yml)
-[![Release Pipeline](https://github.com/juice-shop/juice-shop/actions/workflows/release.yml/badge.svg)](https://github.com/juice-shop/juice-shop/actions/workflows/release.yml)
-[![Coverage Status](https://coveralls.io/repos/github/juice-shop/juice-shop/badge.svg?branch=develop)](https://coveralls.io/github/juice-shop/juice-shop?branch=develop)
-[![Cypress tests](https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/3hrkhu/develop&style=flat&logo=cypress)](https://dashboard.cypress.io/projects/3hrkhu/runs)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/223/badge)](https://www.bestpractices.dev/projects/223)
-![GitHub stars](https://img.shields.io/github/stars/juice-shop/juice-shop.svg?label=GitHub%20%E2%98%85&style=flat)
-[![Static Badge](https://img.shields.io/badge/OWASP-Code_of_Conduct-blue)](CODE_OF_CONDUCT.md)
+Pipeline นี้ถูกออกแบบให้ทำหน้าที่เป็น **Security Gate** ในกระบวนการ CI/CD โดยจะทำการตรวจสอบความปลอดภัยโดยอัตโนมัติเมื่อมีการ Push Code ไปยัง Branch ที่กำหนด หรือเมื่อมีการสร้าง Pull Request
 
-> [The most trustworthy online shop out there.](https://twitter.com/dschadow/status/706781693504589824)
-> ([@dschadow](https://github.com/dschadow)) —
-> [The best juice shop on the whole internet!](https://twitter.com/shehackspurple/status/907335357775085568)
-> ([@shehackspurple](https://twitter.com/shehackspurple)) —
-> [Actually the most bug-free vulnerable application in existence!](https://youtu.be/TXAztSpYpvE?t=26m35s)
-> ([@vanderaj](https://twitter.com/vanderaj)) —
-> [First you 😂😂then you 😢](https://twitter.com/kramse/status/1073168529405472768)
-> ([@kramse](https://twitter.com/kramse)) —
-> [But this doesn't have anything to do with juice.](https://twitter.com/coderPatros/status/1199268774626488320)
-> ([@coderPatros' wife](https://twitter.com/coderPatros))
+การตรวจสอบแบ่งออกเป็น 2 ประเภทหลัก ได้แก่
 
-OWASP Juice Shop is probably the most modern and sophisticated insecure web application! It can be used in security
-trainings, awareness demos, CTFs and as a guinea pig for security tools! Juice Shop encompasses vulnerabilities from the
-entire
-[OWASP Top Ten](https://owasp.org/www-project-top-ten) along with many other security flaws found in real-world
-applications!
+- **Snyk Code (SAST):** วิเคราะห์ Source Code เพื่อค้นหาช่องโหว่ด้านความปลอดภัยและรูปแบบการเขียนโปรแกรมที่ไม่ปลอดภัย โดยไม่จำเป็นต้อง Execute Application
+- **Snyk Open Source (SCA):** วิเคราะห์ Third-party Dependencies รวมถึง Transitive Dependencies เพื่อค้นหาช่องโหว่ที่มีการเปิดเผยและบันทึกไว้ในฐานข้อมูลช่องโหว่ของ Snyk
 
-![Juice Shop Screenshot Slideshow](screenshots/slideshow.gif)
+Pipeline กำหนด Severity Threshold ไว้ที่ระดับ **High** ซึ่งหมายความว่าหากตรวจพบช่องโหว่ระดับ High หรือ Critical จะทำให้ Quality Gate ไม่ผ่าน และส่งผลให้ Pipeline มีสถานะ Failed
 
-For a detailed introduction, full list of features and architecture overview please visit the official project page:
-<https://owasp-juice.shop>
+## 2. Pipeline Design
 
-## Table of contents
+Pipeline ถูกแบ่งออกเป็น 6 ขั้นตอนหลัก ดังนี้
 
-- [Setup](#setup)
-    - [From Sources](#from-sources)
-    - [Packaged Distributions](#packaged-distributions)
-    - [Docker Container](#docker-container)
-    - [Vagrant](#vagrant)
-- [Demo](#demo)
-- [Documentation](#documentation)
-    - [Node.js version compatibility](#nodejs-version-compatibility)
-    - [Troubleshooting](#troubleshooting)
-    - [Official companion guide](#official-companion-guide)
-- [Contributing](#contributing)
-- [References](#references)
-- [Merchandise](#merchandise)
-- [Donations](#donations)
-- [Contributors](#contributors)
-- [Licensing](#licensing)
+1. **SCM Trigger** – กำหนดเงื่อนไขในการเริ่มต้น Pipeline
+2. **Environment Setup** – เตรียม Environment สำหรับการ Scan
+3. **Security Scanning** – ตรวจสอบช่องโหว่ด้วย SAST และ SCA
+4. **Result Collection** – รวบรวมผลการตรวจสอบ
+5. **Quality Gate** – ประเมินผลการตรวจสอบตาม Security Policy
+6. **Pipeline Status** – สรุปผลการทำงานของ Pipeline
 
-## Setup
+### 2.1 SCM Trigger
 
-> You can find some less common installation variations as well as instructions to run Juice Shop on a variety of cloud computing providers in
-> [the _Running OWASP Juice Shop_ documentation](https://pwning.owasp-juice.shop/companion-guide/latest/part1/running.html).
+กำหนดให้ Pipeline ทำงานเมื่อเกิด GitHub Events ตามเงื่อนไขดังนี้
 
-> Some challenges require an AI/LLM provider to work properly. Check the
-> [_Setting up external dependencies_ documentation](https://pwning.owasp-juice.shop/companion-guide/snapshot/part1/running.html#_setting_up_external_dependencies)
-> for instructions on configuring local or cloud-based AI providers.
+| Event | Target Branch |
+|---|---|
+| Push | `master` |
+| Push | `feature/**` |
+| Pull Request | `master` |
+| Pull Request | `feature/**` |
 
-### From Sources
 
-![GitHub repo size](https://img.shields.io/github/repo-size/juice-shop/juice-shop.svg)
 
-1. Install [node.js](#nodejs-version-compatibility)
-2. Run `git clone https://github.com/juice-shop/juice-shop.git --depth 1` (or
-   clone [your own fork](https://github.com/juice-shop/juice-shop/fork)
-   of the repository)
-3. Go into the cloned folder with `cd juice-shop`
-4. Run `npm install` (only has to be done before first start or when you change the source code)
-5. Run `npm start`
-6. Browse to <http://localhost:3000>
 
-### Packaged Distributions
+### 2.2 Environment Setup
 
-[![GitHub release](https://img.shields.io/github/downloads/juice-shop/juice-shop/total.svg)](https://github.com/juice-shop/juice-shop/releases/latest)
-[![SourceForge](https://img.shields.io/sourceforge/dm/juice-shop?label=sourceforge%20downloads)](https://sourceforge.net/projects/juice-shop/)
-[![SourceForge](https://img.shields.io/sourceforge/dt/juice-shop?label=sourceforge%20downloads)](https://sourceforge.net/projects/juice-shop/)
+เป็นขั้นตอนการเตรียม Environment บน GitHub Actions Runner เพื่อให้พร้อมสำหรับการตรวจสอบช่องโหว่
 
-1. Install a 64bit [node.js](#nodejs-version-compatibility) on your Windows, MacOS or Linux machine
-2. Download `juice-shop-<version>_<node-version>_<os>_x64.zip` (or
-   `.tgz`) attached to
-   [latest release](https://github.com/juice-shop/juice-shop/releases/latest)
-3. Unpack and `cd` into the unpacked folder
-4. Run `npm start`
-5. Browse to <http://localhost:3000>
+ขั้นตอนประกอบด้วย
 
-> Each packaged distribution includes some binaries for `sqlite3` and
-> `libxmljs2` bound to the OS and node.js version which `npm install` was
-> executed on.
+- Checkout Source Code จาก Repository
+- ติดตั้ง Node.js เวอร์ชัน 22
+- ติดตั้ง Snyk CLI โดยกำหนดเวอร์ชันที่แน่นอนเป็น `1.1308.4`
+- ติดตั้ง Dependencies ของโปรเจกต์ด้วย `npm install --ignore-scripts`
+- Authentication กับ Snyk ผ่าน `SNYK_TOKEN` ที่จัดเก็บไว้ใน GitHub Actions Secrets
 
-### Docker Container
+**Security Considerations**
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/bkimminich/juice-shop.svg)](https://hub.docker.com/r/bkimminich/juice-shop)
-![Docker Stars](https://img.shields.io/docker/stars/bkimminich/juice-shop.svg)
-[![](https://images.microbadger.com/badges/image/bkimminich/juice-shop.svg)](https://microbadger.com/images/bkimminich/juice-shop
-"Get your own image badge on microbadger.com")
-[![](https://images.microbadger.com/badges/version/bkimminich/juice-shop.svg)](https://microbadger.com/images/bkimminich/juice-shop
-"Get your own version badge on microbadger.com")
+- จัดเก็บ `SNYK_TOKEN` ไว้ใน GitHub Actions Secrets เพื่อป้องกันการเปิดเผย Credential ภายใน Repository
+- Pin เวอร์ชันของ Snyk CLI เพื่อให้การทำงานของ Pipeline มีความสม่ำเสมอ
+- อ้างอิง GitHub Actions ด้วย Commit SHA เพื่อลดความเสี่ยงจากการเปลี่ยนแปลงของ Action ที่อ้างอิงด้วย Tag
+- ใช้ `--ignore-scripts` เพื่อป้องกันการ Execute Lifecycle Scripts ของ Dependencies ในระหว่างการติดตั้ง
 
-1. Install [Docker](https://www.docker.com)
-2. Run `docker pull bkimminich/juice-shop`
-3. Run `docker run --rm -p 127.0.0.1:3000:3000 bkimminich/juice-shop`
-4. Browse to <http://localhost:3000> (on macOS and Windows browse to
-   <http://192.168.99.100:3000> if you are using docker-machine instead of the native docker installation)
+### 2.3 Security Scanning
 
-### Vagrant
+ขั้นตอนนี้เป็นการตรวจสอบช่องโหว่โดยใช้ Snyk แบ่งออกเป็น 2 ส่วน ซึ่งทำงานแยกจากกัน
 
-1. Install [Vagrant](https://www.vagrantup.com/downloads.html) and
-   [Virtualbox](https://www.virtualbox.org/wiki/Downloads)
-2. Run `git clone https://github.com/juice-shop/juice-shop.git` (or
-   clone [your own fork](https://github.com/juice-shop/juice-shop/fork)
-   of the repository)
-3. Run `cd vagrant && vagrant up`
-4. Browse to [192.168.56.110](http://192.168.56.110)
+**A. Snyk Code (SAST)**
 
-## Demo
+ใช้สำหรับวิเคราะห์ Source Code เพื่อค้นหาช่องโหว่ด้านความปลอดภัย เช่น การเขียน Code ที่อาจทำให้เกิด Security Vulnerabilities โดยไม่จำเป็นต้อง Execute Application
 
-Feel free to have a look at the latest version of OWASP Juice Shop:
-<http://demo.owasp-juice.shop>
+คำสั่งที่ใช้:
 
-> This is a deployment-test and sneak-peek instance only! You are __not
-> supposed__ to use this instance for your own hacking endeavours! No
-> guaranteed uptime! Guaranteed stern looks if you break it!
+```bash
+snyk code test \
+  --severity-threshold=high \
+  --sarif-file-output=results/snyk-code.sarif
+```
 
-## Documentation
+ผลลัพธ์:
+- `results/snyk-code.sarif`
 
-### Node.js version compatibility
+**B. Snyk Open Source (SCA)**
 
-![GitHub package.json dynamic](https://img.shields.io/github/package-json/cpu/juice-shop/juice-shop)
-![GitHub package.json dynamic](https://img.shields.io/github/package-json/os/juice-shop/juice-shop)
+ใช้สำหรับตรวจสอบ Third-party Dependencies และ Transitive Dependencies เพื่อค้นหาช่องโหว่ที่มีการเปิดเผยใน Open Source Packages
 
-OWASP Juice Shop officially supports the following versions of
-[node.js](http://nodejs.org) in line with the official
-[node.js LTS schedule](https://github.com/nodejs/LTS) as close as possible. Docker images and packaged distributions are
-offered accordingly.
+คำสั่งที่ใช้:
 
-| node.js | Supported              | Tested             | [Packaged Distributions](#packaged-distributions) | [Docker images](#docker-container) from `master` | [Docker images](#docker-container) from `develop` |
-|:--------|:-----------------------|:-------------------|:--------------------------------------------------|:-------------------------------------------------|:--------------------------------------------------|
-| 26.x    | :heavy_check_mark:     | :heavy_check_mark: |                                                   |                                                  |                                                   |
-| 25.x    | ( :heavy_check_mark: ) | :x:                |                                                   |                                                  |                                                   |
-| 24.x    | :heavy_check_mark:     | :heavy_check_mark: | Windows (`x64`), MacOS (`x64`), Linux (`x64`)     | `latest` (`linux/amd64`, `linux/arm64`)          | `snapshot` (`linux/amd64`, `linux/arm64`)         |
-| 23.x    | :x:                    | :x:                |                                                   |                                                  |                                                   |
-| 22.x    | :heavy_check_mark:     | :heavy_check_mark: |                                                   |                                                  |                                                   |
-| <22.x   | :x:                    | :x:                |                                                   |                                                  |                                                   |
+```bash
+snyk test \
+  --severity-threshold=high \
+  --json-file-output=results/snyk-sca.json
+```
 
-Juice Shop is automatically tested _only on the latest `.x` minor version_ of each node.js version mentioned above!
-There is no guarantee that older minor node.js releases will always work with Juice Shop!
-Please make sure you stay up to date with your chosen version.
+ผลลัพธ์:
+- `results/snyk-sca.json`
 
-### Troubleshooting
+ทั้งสองขั้นตอนกำหนด `continue-on-error: true` เพื่อให้ Pipeline สามารถดำเนินการในขั้นตอนถัดไปได้ แม้ว่าจะตรวจพบช่องโหว่หรือเกิดข้อผิดพลาดระหว่างการ Scan
 
-[![Gitter](http://img.shields.io/badge/gitter-join%20chat-1dce73.svg)](https://gitter.im/bkimminich/juice-shop)
+แนวทางนี้ช่วยให้ Pipeline สามารถดำเนินการ Scan ทั้งสองประเภทและรวบรวมผลลัพธ์ได้ก่อนที่จะนำผลทั้งหมดไปประเมินในขั้นตอน Quality Gate
 
-If you need help with the application setup please check 
-[our existing _Troubleshooting_](https://pwning.owasp-juice.shop/companion-guide/latest/part4/troubleshooting.html)
-guide. If this does not solve your issue please post your specific problem or question in the
-[Gitter Chat](https://gitter.im/bkimminich/juice-shop) where community members can best try to help you.
+### 2.4 Result Collection
 
-:stop_sign: **Please avoid opening GitHub issues for support requests or questions!**
+เป็นขั้นตอนการรวบรวมผลการตรวจสอบจาก Snyk และจัดเก็บเป็น GitHub Actions Artifacts เพื่อให้สามารถดาวน์โหลดและตรวจสอบรายละเอียดภายหลังได้
 
-### Official companion guide
+ชื่อ Artifact:
 
-[![Write Goodreads Review](https://img.shields.io/badge/goodreads-write%20review-49557240.svg)](https://www.goodreads.com/review/edit/49557240)
+```text
+snyk-results
+```
 
-OWASP Juice Shop comes with an official companion guide eBook. It will give you a complete overview of all
-vulnerabilities found in the application including hints how to spot and exploit them. In the appendix you will even
-find complete step-by-step solutions to every challenge. Extensive documentation of
-[custom re-branding](https://pwning.owasp-juice.shop/companion-guide/latest/part4/customization.html),
-[CTF-support](https://pwning.owasp-juice.shop/companion-guide/latest/part4/ctf.html),
-[trainer's guide](https://pwning.owasp-juice.shop/companion-guide/latest/part4/trainers.html)
-and much more is also included.
+ไฟล์ผลลัพธ์ประกอบด้วย
 
-[Pwning OWASP Juice Shop](https://leanpub.com/juice-shop) is published under
-[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)
-and is available **for free** in PDF, Kindle and ePub format on LeanPub. You can also
-[browse the full content online](https://pwning.owasp-juice.shop)!
+| File | Description |
+|---|---|
+| `snyk-code.sarif` | ผลการตรวจสอบช่องโหว่จาก SAST |
+| `snyk-sca.json` | ผลการตรวจสอบช่องโหว่จาก SCA |
 
-[<img alt="Pwning OWASP Juice Shop cover" src="https://raw.githubusercontent.com/juice-shop/pwning-juice-shop/master/docs/modules/ROOT/assets/images/cover.jpg" width="200"/>](https://leanpub.com/juice-shop)
-[<img alt="Pwning OWASP Juice Shop back cover" src="https://raw.githubusercontent.com/juice-shop/pwning-juice-shop/master/docs/modules/ROOT/assets/images/introduction/back.jpg" width="200"/>](https://leanpub.com/juice-shop)
+กำหนด `if: always()` ให้กับขั้นตอน Upload Results เพื่อให้ระบบพยายามรวบรวมผลลัพธ์ แม้ว่าขั้นตอนก่อนหน้าจะเกิดข้อผิดพลาดก็ตาม
 
-## Contributing
+ช่วยให้ Developer และ Security Engineer สามารถตรวจสอบรายละเอียดของช่องโหว่ที่ตรวจพบได้ แม้ว่า Pipeline จะมีสถานะ Failed
 
-[![GitHub contributors](https://img.shields.io/github/contributors/juice-shop/juice-shop.svg)](https://github.com/juice-shop/juice-shop/graphs/contributors)
-[![JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
-[![Crowdin](https://d322cqt584bo4o.cloudfront.net/owasp-juice-shop/localized.svg)](https://crowdin.com/project/owasp-juice-shop)
-![GitHub issues by-label](https://img.shields.io/github/issues/juice-shop/juice-shop/help%20wanted.svg)
-![GitHub issues by-label](https://img.shields.io/github/issues/juice-shop/juice-shop/good%20first%20issue.svg)
+### 2.5 Quality Gate
 
-We are always happy to get new contributors on board! Please check
-[CONTRIBUTING.md](CONTRIBUTING.md) to learn how to
-[contribute to our codebase](CONTRIBUTING.md#code-contributions) or the
-[translation into different languages](CONTRIBUTING.md#i18n-contributions)!
+เป็นขั้นตอนการประเมินผลการตรวจสอบจากทั้ง SAST และ SCA โดยพิจารณาจาก Exit Code ที่ส่งกลับมาจาก Snyk CLI
 
-## References
+| Exit Code | ความหมาย | ผลการประเมิน |
+|---|---|---|
+| `0` | ไม่พบช่องโหว่ตั้งแต่ระดับ Severity Threshold ที่กำหนด | Pass |
+| `1` | ตรวจพบช่องโหว่ตั้งแต่ระดับ Severity Threshold ที่กำหนด | Fail |
+| `2` | เกิดข้อผิดพลาดในการทำงานของ Snyk CLI หรือการ Execute | Fail |
+| `3` | ไม่พบ Project หรือไฟล์ที่รองรับสำหรับการ Scan | Fail |
 
-Did you write a blog post, magazine article or do a podcast about or mentioning OWASP Juice Shop? Or maybe you held or
-joined a conference talk or meetup session, a hacking workshop or public training where this project was mentioned?
+**เงื่อนไขการทำงานของ Quality Gate**
 
-Add it to our ever-growing list of [REFERENCES.md](REFERENCES.md) by forking and opening a Pull Request!
+1. หาก SAST หรือ SCA ส่ง Exit Code `2` หรือ `3` จะถือว่าเกิดข้อผิดพลาดในการตรวจสอบ และ Pipeline จะไม่ผ่าน
+2. หาก SAST หรือ SCA ส่ง Exit Code `1` จะถือว่าตรวจพบช่องโหว่ระดับ High หรือ Critical และ Pipeline จะไม่ผ่าน
+3. หากทั้ง SAST และ SCA ส่ง Exit Code `0` จะถือว่าผ่าน Security Gate
+4. หากไม่สามารถรับ Exit Code หรือได้รับค่าที่ไม่ตรงกับเงื่อนไขที่กำหนด จะถือว่าไม่ผ่าน Security Gate
 
-## Merchandise
+การออกแบบนี้ช่วยป้องกันไม่ให้ Pipeline ผ่านโดยไม่ตั้งใจ ในกรณีที่ Scanner ไม่สามารถทำงานได้อย่างถูกต้อง
 
-* On [Spreadshirt.com](http://shop.spreadshirt.com/juiceshop) and
-  [Spreadshirt.de](http://shop.spreadshirt.de/juiceshop) you can get some swag (Shirts, Hoodies, Mugs) with the official
-  OWASP Juice Shop logo
-* On
-  [StickerYou.com](https://www.stickeryou.com/products/owasp-juice-shop/794)
-  you can get variants of the OWASP Juice Shop logo as single stickers to decorate your laptop with. They can also print
-  magnets, iron-ons, sticker sheets and temporary tattoos.
+### 2.6 Pipeline Status
 
-## Donations
+สถานะสุดท้ายของ Pipeline จะถูกกำหนดโดยผลลัพธ์จาก Quality Gate
 
-[![](https://img.shields.io/badge/support-owasp%20juice%20shop-blue)](https://owasp.org/donate/?reponame=www-project-juice-shop&title=OWASP+Juice+Shop)
+| Condition | Result |
+|---|---|
+| SAST และ SCA ผ่านทั้งคู่ | Pipeline PASSED |
+| ตรวจพบช่องโหว่ระดับ High / Critical | Pipeline FAILED |
+| เกิดข้อผิดพลาดระหว่างการ Scan | Pipeline FAILED |
+| ไม่พบ Project หรือไฟล์ที่รองรับ | Pipeline FAILED |
 
-The OWASP Foundation gratefully accepts donations via Stripe. Projects such as Juice Shop can then request reimbursement
-for expenses from the Foundation. If you'd like to express your support of the Juice Shop project, please make sure to
-tick the "Publicly list me as a supporter of OWASP Juice Shop" checkbox on the donation form. You can find our more
-about donations and how they are used here:
+Pipeline นี้ทำหน้าที่เป็น Security Enforcement Mechanism ภายใน CI/CD Workflow เพื่อช่วยลดความเสี่ยงจากการนำ Source Code หรือ Dependencies ที่มีช่องโหว่เข้าสู่กระบวนการพัฒนาในขั้นตอนถัดไป
 
-<https://pwning.owasp-juice.shop/companion-guide/latest/part3/donations.html>
+## 3. Pipeline Flow
 
-## Contributors
+```text
+          Developer Push / Pull Request
+                       |
+                       v
+                  SCM Trigger
+                       |
+                       v
+             GitHub Actions Runner
+                       |
+                       v
+               Environment Setup
+             +---------------------+
+             | Checkout Source     |
+             | Install Node.js 22  |
+             | Install Snyk CLI    |
+             | Install Dependencies|
+             | Authenticate Snyk   |
+             +---------------------+
+                       |
+                       v
+                Security Scanning
+                 /             \
+                v               v
+           Snyk Code       Snyk Open Source
+             (SAST)              (SCA)
+                |                 |
+                v                 v
+           SARIF Report       JSON Report
+                |                 |
+                +--------+--------+
+                         |
+                         v
+                 Result Collection
+                         |
+                         v
+                   Quality Gate
+                         |
+               +---------+---------+
+               |                   |
+               v                   v
+          All Scans Pass     Vulnerability /
+               |             Scanner Error
+               v                   |
+          Pipeline PASS            v
+                              Pipeline FAIL
+```
 
-The OWASP Juice Shop Project Leaders are:
+ข้อจำกัดด้าน Container และ Infrastructure Security
+Pipeline ปัจจุบันตรวจสอบเพียง Source Code และ Dependencies เท่านั้น
 
-- [Björn Kimminich](https://github.com/bkimminich) aka `bkimminich` [![Keybase PGP](https://img.shields.io/keybase/pgp/bkimminich)](https://keybase.io/bkimminich)
-- [Jannik Hollenbach](https://github.com/J12934) aka `J12934`
-
-For a list of all contributors to the OWASP Juice Shop please visit our
-[HALL_OF_FAME.md](HALL_OF_FAME.md).
-
-## Licensing
-
-[![license](https://img.shields.io/github/license/juice-shop/juice-shop.svg)](LICENSE)
-
-This program is free software: you can redistribute it and/or modify it under the terms of the [MIT license](LICENSE).
-OWASP Juice Shop and any contributions are Copyright © by Bjoern Kimminich & the OWASP Juice Shop contributors
-2014-2026.
-
-![Juice Shop Logo](https://raw.githubusercontent.com/juice-shop/juice-shop/master/frontend/src/assets/public/images/JuiceShop_Logo_400px.png)
