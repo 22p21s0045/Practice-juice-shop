@@ -199,3 +199,5 @@ Pipeline นี้ทำหน้าที่เป็น Security Enforcement M
 ข้อจำกัดด้าน Container และ Infrastructure Security
 Pipeline ปัจจุบันตรวจสอบเพียง Source Code และ Dependencies เท่านั้น
 
+## AI Usage
+มีการใช้ AI เป็นเครื่องมือช่วยสนับสนุนการดำเนินโปรเจกต์ โดยใช้ในการค้นคว้าและรวบรวมข้อมูลที่เกี่ยวข้องกับ Security Scanning, Snyk CLI และ GitHub Actions รวมถึงช่วยจัดเรียงเนื้อหาและร่างเอกสารรายงาน (Report) เพื่อให้เนื้อหามีความชัดเจนและเป็นระบบมากยิ่งขึ้น
