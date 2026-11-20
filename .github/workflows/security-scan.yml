@@ -64,7 +64,7 @@ jobs:
           SAST_OUTCOME: ${{ steps.sast.outcome }}
           SCA_OUTCOME: ${{ steps.sca.outcome }}
         run: |
-          if ["$SAST_OUTCOME" == "failure"] || ["$SCA_OUTCOME" == "failure"]; then
+          if [ "$SAST_OUTCOME" == "failure" ] || [ "$SCA_OUTCOME" == "failure" ]; then
             echo "Quality Gate FAILED - High or Critical vulnerabilities detected."
             echo "  SAST: $SAST_OUTCOME"
             echo "  SCA:  $SCA_OUTCOME"
