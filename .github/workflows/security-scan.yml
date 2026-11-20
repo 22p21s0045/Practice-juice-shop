@@ -11,13 +11,13 @@ on:
   pull_request:
     branches:
       - master
-      - 'feature/**'
+      - 'feature/**' # Trigger ตอนที่มี Pull Request หรือการ Push ขึ้น branch master หรือ branch ที่ชือขึ้นต้นด้วย "feature/" (feature branch)
 
 permissions:
-  contents: read
+  contents: read # Set Permission เป็น Read เพราะว่า Pipeline เราทําหน้าที่เป็น Gate คอย scan ช่องโหว่ไม่ควรได้สิทธิอื่นเพิ่มเติม
 
 env:
-  SNYK_VERSION: "1.1308.4"                 # pin an exact CLI version (no latest)
+  SNYK_VERSION: "1.1308.4" # เลือก version นี้เพราะเป็น version ที่ stable (pin an exact CLI version (no latest))
 
 jobs:
   snyk-scan:                           # 2) Trigger Scan -> 3) Runner
@@ -25,22 +25,24 @@ jobs:
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}   # CI secret - never commit
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # version 4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # version 4.4.0 เลือก version นี้เพราะเป็น version ที่ stable มากที่สุดของ v4
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # version 4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # version 4.4.0 เลือก version นี้เพราะเป็น version ที่ stable มากที่สุดของ v4
         with:
-          node-version: "22" 
+          node-version: "22"
 
 
       - name: Install Snyk CLI (pinned)
         run: npm install -g "snyk@${SNYK_VERSION}"
 
+
       - name: Authenticate
         run: snyk auth "$SNYK_TOKEN"   # or rely on SNYK_TOKEN env only
 
       - name: Snyk Code (SAST)
-        run: snyk code test --sarif-file-output=TODO.sarif
+        run: snyk code test --serverity-threshold=high --sarif-file-output=TODO.sarif
         # TODO: what happens to the next steps when this exits 1?
+        
 
       - name: Snyk Open Source (SCA)
         run: snyk test --severity-threshold=high --json-file-output=TODO.json
