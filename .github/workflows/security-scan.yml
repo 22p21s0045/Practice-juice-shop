@@ -36,7 +36,7 @@ jobs:
         run: npm install -g "snyk@${SNYK_VERSION}"
 
       - name: Install project dependencies # Install Dependency เพื่อที่จะ test SCA
-        run: npm install
+        run: npm install --ignore-scripts
       - name: Authenticate
         run: snyk auth "$SNYK_TOKEN"   # or rely on SNYK_TOKEN env only
       
@@ -61,7 +61,7 @@ jobs:
       - name: Quality Gate # เช็คว่า step ก่อนหน้ามี Error ไหม
         if: always()
         run: |
-          if ["{{step.sast.outcome}}" == "failure"] || ["{{step.sca.outcome}}" == "failure"]; then
+          if ["${{steps.sast.outcome}}" == "failure"] || ["${{steps.sca.outcome}}" == "failure"]; then
             echo "Quality Gate FAILED - High or Critical vulnerabilities detected."
             exit 1
           elif [ "${{ steps.sast.outcome }}" == "success" ] && [ "${{ steps.sca.outcome }}" == "success" ]; then
