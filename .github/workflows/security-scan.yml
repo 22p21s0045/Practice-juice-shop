@@ -58,7 +58,7 @@ jobs:
       # TODO: quality gate - fail the pipeline on High/Critical
       
       - name: Quality Gate # เช็คว่า step ก่อนหน้ามี Error ไหม
-        if: steps.sast == 'failure' || steps.sca == 'failure'
+        if: steps.sast.outcome == 'failure' || steps.sca.outcome == 'failure'
         run: |
           echo "Quality Gate FAILED"
           exit 1
