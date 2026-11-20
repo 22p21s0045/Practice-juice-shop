@@ -40,20 +40,26 @@ jobs:
         run: snyk auth "$SNYK_TOKEN"   # or rely on SNYK_TOKEN env only
 
       - name: Snyk Code (SAST)
-        run: snyk code test --severity-threshold=high --sarif-file-output=TODO.sarif
+        id: sast
+        continue-on-error: true # ถ้ามี Error ปล่อยให้ไป Step ถัดไปได้เพราะจะไปหยุดที่ step gate
+        run: snyk code test --severity-threshold=high --sarif-file-output=results/snyk-code.sarif
         # TODO: what happens to the next steps when this exits 1?
-
-
       - name: Snyk Open Source (SCA)
-        run: snyk test --severity-threshold=high --json-file-output=TODO.json
-
-      # - name: Snyk Container (optional)
-      #   run: snyk container test TODO-image --file=Dockerfile
-
+        id: sca
+        continue-on-error: true
+        run: snyk test --severity-threshold=high --json-file-output=results/snyk-sca.json
       - name: Upload results            # 4) Result
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: snyk-results
-          path: TODO                   # TODO: keep results even on failure
+          path: results                   # TODO: keep results even on failure
 
       # TODO: quality gate - fail the pipeline on High/Critical
+      
+      - name: Quality Gate # เช็คว่า step ก่อนหน้ามี Error ไหม
+        if: steps.sast == 'failure' || steps.sca == 'failure'
+        run: |
+          echo "Quality Gate FAILED"
+          exit 1
+        
