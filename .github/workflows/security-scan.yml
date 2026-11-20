@@ -43,12 +43,24 @@ jobs:
       - name: Snyk Code (SAST)
         id: sast
         continue-on-error: true # ถ้ามี Error ปล่อยให้ไป Step ถัดไปได้เพราะจะไปหยุดที่ step gate
-        run: snyk code test --severity-threshold=high --sarif-file-output=results/snyk-code.sarif
+        run: |
+          set +e
+          snyk code test --severity-threshold=high --sarif-file-output=results/snyk-code.sarif
+          EXIT_CODE=$?
+          set -e
+          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+          exit "$EXIT_CODE"
         # TODO: what happens to the next steps when this exits 1?
       - name: Snyk Open Source (SCA)
         id: sca
         continue-on-error: true
-        run: snyk test --severity-threshold=high --json-file-output=results/snyk-sca.json
+        run: | # sdfsdf
+          set +e
+          snyk test --severity-threshold=high --json-file-output=results/snyk-sca.json
+          EXIT_CODE=$?
+          set -e
+          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+          exit "$EXIT_CODE"
       - name: Upload results            # 4) Result
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -58,21 +70,25 @@ jobs:
 
       # TODO: quality gate - fail the pipeline on High/Critical
       
-      - name: Quality Gate # เช็คว่า step ก่อนหน้ามี Error ไหม
+      - name: Quality Gate # เช็คว่า step ก่อนหน้ามี Error ไหม (Exit Code 2 (CLI / Execution Failure) , Exit Code 3 (No Supported Projects / Files Found)  )
         if: always()
         env:
-          SAST_OUTCOME: ${{ steps.sast.outcome }}
-          SCA_OUTCOME: ${{ steps.sca.outcome }}
+         SAST_CODE: ${{ steps.sast.outputs.exit_code }}
+         SCA_CODE: ${{ steps.sca.outputs.exit_code }}
         run: |
-          if [ "$SAST_OUTCOME" == "failure" ] || [ "$SCA_OUTCOME" == "failure" ]; then
-            echo "Quality Gate FAILED - High or Critical vulnerabilities detected."
-            echo "  SAST: $SAST_OUTCOME"
-            echo "  SCA:  $SCA_OUTCOME"
+          echo "SAST Exit Code: $SAST_CODE"
+          echo "SCA Exit Code:  $SCA_CODE"
+
+          if [ "$SAST_CODE" == "2" ] || [ "$SAST_CODE" == "3" ] || [ "$SCA_CODE" == "2" ] || [ "$SCA_CODE" == "3" ]; then
+            echo "Scanner Error (Exit Code 2/3) - Check SNYK_TOKEN or project files."
             exit 1
-          elif [ "$SAST_OUTCOME" == "success" ] && [ "$SCA_OUTCOME" == "success" ]; then
+          elif [ "$SAST_CODE" == "1" ] || [ "$SCA_CODE" == "1" ]; then
+            echo "Quality Gate FAILED - High or Critical vulnerabilities detected."
+            exit 1
+          elif [ "$SAST_CODE" == "0" ] && [ "$SCA_CODE" == "0" ]; then
             echo "Quality Gate PASSED - No High or Critical vulnerabilities found."
           else
-            echo "Quality Gate FAILED - One or more scan steps not complete."
+            echo "Quality Gate FAILED - Scan step did not run."
             exit 1
           fi
        
