@@ -58,8 +58,15 @@ jobs:
       # TODO: quality gate - fail the pipeline on High/Critical
       
       - name: Quality Gate # เช็คว่า step ก่อนหน้ามี Error ไหม
-        if: steps.sast.outcome == 'failure' || steps.sca.outcome == 'failure'
+        if: always()
         run: |
-          echo "Quality Gate FAILED"
-          exit 1
-        
+          if ["{{step.sast.outcome}}" == "failure"] || ["{{step.sca.outcome}}" == "failure"]; then
+            echo "Quality Gate FAILED - High or Critical vulnerabilities detected."
+            exit 1
+          elif [ "${{ steps.sast.outcome }}" == "success" ] && [ "${{ steps.sca.outcome }}" == "success" ]; then
+            echo "Quality Gate PASSED - No High or Critical vulnerabilities found."
+          else
+            echo "Quality Gate FAILED - One or more scan steps not complete."
+            exit 1
+          fi
+       
