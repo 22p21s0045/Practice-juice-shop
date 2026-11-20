@@ -40,9 +40,9 @@ jobs:
         run: snyk auth "$SNYK_TOKEN"   # or rely on SNYK_TOKEN env only
 
       - name: Snyk Code (SAST)
-        run: snyk code test --serverity-threshold=high --sarif-file-output=TODO.sarif
+        run: snyk code test --severity-threshold=high --sarif-file-output=TODO.sarif
         # TODO: what happens to the next steps when this exits 1?
-        
+
 
       - name: Snyk Open Source (SCA)
         run: snyk test --severity-threshold=high --json-file-output=TODO.json
