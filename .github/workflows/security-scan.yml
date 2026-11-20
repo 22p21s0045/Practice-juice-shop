@@ -78,7 +78,7 @@ jobs:
         run: |
           echo "SAST Exit Code: $SAST_CODE"
           echo "SCA Exit Code:  $SCA_CODE"
-
+          # เช็คกรณีที่มี error ที่ไม่เกี่ยวกับช่องโหว่
           if [ "$SAST_CODE" == "2" ] || [ "$SAST_CODE" == "3" ] || [ "$SCA_CODE" == "2" ] || [ "$SCA_CODE" == "3" ]; then
             echo "Scanner Error (Exit Code 2/3) - Check SNYK_TOKEN or project files."
             exit 1
