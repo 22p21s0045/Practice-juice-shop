@@ -60,11 +60,16 @@ jobs:
       
       - name: Quality Gate # เช็คว่า step ก่อนหน้ามี Error ไหม
         if: always()
+        env:
+          SAST_OUTCOME: ${{ steps.sast.outcome }}
+          SCA_OUTCOME: ${{ steps.sca.outcome }}
         run: |
-          if ["${{steps.sast.outcome}}" == "failure"] || ["${{steps.sca.outcome}}" == "failure"]; then
+          if ["$SAST_OUTCOME" == "failure"] || ["$SCA_OUTCOME" == "failure"]; then
             echo "Quality Gate FAILED - High or Critical vulnerabilities detected."
+            echo "  SAST: $SAST_OUTCOME"
+            echo "  SCA:  $SCA_OUTCOME"
             exit 1
-          elif [ "${{ steps.sast.outcome }}" == "success" ] && [ "${{ steps.sca.outcome }}" == "success" ]; then
+          elif [ "$SAST_OUTCOME" == "success" ] && [ "$SCA_OUTCOME" == "success" ]; then
             echo "Quality Gate PASSED - No High or Critical vulnerabilities found."
           else
             echo "Quality Gate FAILED - One or more scan steps not complete."
