@@ -35,10 +35,11 @@ jobs:
       - name: Install Snyk CLI (pinned)
         run: npm install -g "snyk@${SNYK_VERSION}"
 
-
+      - name: Install project dependencies # Install Dependency เพื่อที่จะ test SCA
+        run: npm install
       - name: Authenticate
         run: snyk auth "$SNYK_TOKEN"   # or rely on SNYK_TOKEN env only
-
+      
       - name: Snyk Code (SAST)
         id: sast
         continue-on-error: true # ถ้ามี Error ปล่อยให้ไป Step ถัดไปได้เพราะจะไปหยุดที่ step gate
@@ -50,7 +51,7 @@ jobs:
         run: snyk test --severity-threshold=high --json-file-output=results/snyk-sca.json
       - name: Upload results            # 4) Result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: snyk-results
           path: results                   # TODO: keep results even on failure
